@@ -164,7 +164,7 @@ export class EventService {
             DEAD: 0,
         };
 
-        jobStatusCounts.forEach((group) => {
+        jobStatusCounts.forEach((group: any) => {
             statusCountsMap[group.status] = group._count.status;
         });
 

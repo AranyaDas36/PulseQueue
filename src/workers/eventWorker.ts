@@ -33,13 +33,13 @@ export const worker = new Worker<EventJobData>(
             create: { status: "IN_PROGRESS" },
           },
         },
-      }).catch((err) => logger.warn({ err }, "Could not update Job to IN_PROGRESS"));
+      }).catch((err: any) => logger.warn({ err }, "Could not update Job to IN_PROGRESS"));
     }
 
     await prisma.event.update({
       where: { id: eventId },
       data: { status: "IN_PROGRESS" },
-    }).catch((err) => logger.warn({ err }, "Could not update Event to IN_PROGRESS"));
+    }).catch((err: any) => logger.warn({ err }, "Could not update Event to IN_PROGRESS"));
 
     emitEvent("job:active", {
       bullJobId: bullJob.id,
