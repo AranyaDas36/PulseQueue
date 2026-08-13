@@ -1,0 +1,110 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum EventStatus {
+  PENDING      
+  IN_PROGRESS  
+  COMPLETED   
+  FAILED       
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum JobStatus {
+  PENDING      
+  IN_PROGRESS  
+  COMPLETED   
+  FAILED      
+  DEAD        
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// Event: The raw incoming request. Created immediately when POST /events is called.
+// This is your audit trail — a permanent record that something happened.
+// It does NOT store business data (no title/description) — those go in Ticket.
+
+model Event {
+  id        String      @id @default(cuid()) 
+  type      String                            // e.g. "TICKET_CREATED", "ORDER_FAILED"
+  payload   Json                              // Raw JSON body 
+  status    EventStatus @default(PENDING)     // Tracks lifecycle of this event
+  createdAt DateTime    @default(now())       
+  updatedAt DateTime    @updatedAt            
+  ticket    Ticket?                           
+  jobs      Job[]                             
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([type])
+}
+
+model Ticket {
+  id          String       @id @default(cuid())
+  title       String                                      
+  description String                                      
+  summary     String?                                     
+  priority    Priority?                                   
+  status      TicketStatus @default(OPEN)
+  tags        Json?
+  eventId     String       @unique                         
+  event       Event        @relation(fields: [eventId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([createdAt])
+  @@index([status])
+}
+
+model Job {
+  id        String     @id @default(cuid())
+  eventId   String
+  event     Event      @relation(fields: [eventId], references: [id])
+  status    JobStatus  @default(PENDING)
+  attempts  Int        @default(0)    
+  worker    String                    // e.g. "AI_SUMMARY", "NOTIFICATION", "ANALYTICS"
+  createdAt DateTime   @default(now())
+  history   JobHistory[]              // Full status change log
+  failedJob FailedJob?               // Populated if this job goes DEAD
+
+  @@index([createdAt])
+  @@index([status])
+}
+
+// Every status transition is recorded. Critical for debugging production failures.
+model JobHistory {
+  id        String    @id @default(cuid())
+  jobId     String
+  job       Job       @relation(fields: [jobId], references: [id])
+  status    JobStatus                 // The status the job moved TO
+  timestamp DateTime  @default(now()) // When did this transition happen
+
+  @@index([timestamp])
+}
+
+// FailedJob: Dead Letter Queue record.
+// Created when a Job exhausts all retries and becomes DEAD.
+model FailedJob {
+  id        String   @id @default(cuid())
+  jobId     String   @unique             
+  job       Job      @relation(fields: [jobId], references: [id])
+  reason    String                     
+  failedAt  DateTime @default(now())
+}
