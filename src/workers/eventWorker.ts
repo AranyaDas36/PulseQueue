@@ -53,7 +53,7 @@ export const worker = new Worker<EventJobData>(
     try {
       // 2. Execute Worker Logic based on workerType
       if (workerType === "AI_ENRICHMENT") {
-        const title = payloadObj.title || "Support Request";
+        const title = payloadObj.title || "Support Requests";
         const description = payloadObj.description || "";
 
         logger.info({ ticketId }, "Executing AI Ticket Enrichment worker");
